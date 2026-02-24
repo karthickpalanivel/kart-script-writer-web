@@ -24,50 +24,42 @@ export function EditorLine({
   onArrowUp,
   onArrowDown,
 }: EditorLineProps) {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (isFocused && ref.current) {
       ref.current.focus()
-      // Place cursor at end
-      const range = document.createRange()
-      const sel = window.getSelection()
-      if (ref.current.childNodes.length > 0) {
-        range.selectNodeContents(ref.current)
-        range.collapse(false)
-      } else {
-        range.setStart(ref.current, 0)
-        range.collapse(true)
-      }
-      sel?.removeAllRanges()
-      sel?.addRange(range)
+      const length = ref.current.value.length
+      ref.current.setSelectionRange(length, length)
     }
   }, [isFocused])
 
+  useEffect(() => {
+    if (!ref.current) return
+    ref.current.style.height = "0px"
+    ref.current.style.height = `${ref.current.scrollHeight}px`
+  }, [line.text])
+
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === "Enter") {
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault()
         onEnter(line.id)
-      } else if (e.key === "Backspace" && !ref.current?.textContent) {
+      } else if (e.key === "Backspace" && !line.text) {
         e.preventDefault()
         onDelete(line.id)
-      } else if (e.key === "ArrowUp") {
+      } else if (e.key === "ArrowUp" && ref.current?.selectionStart === 0) {
         e.preventDefault()
         onArrowUp(line.id)
-      } else if (e.key === "ArrowDown") {
+      } else if (
+        e.key === "ArrowDown" &&
+        ref.current?.selectionStart === line.text.length
+      ) {
         e.preventDefault()
         onArrowDown(line.id)
       }
     },
-    [line.id, onEnter, onDelete, onArrowUp, onArrowDown]
-  )
-
-  const handleInput = useCallback(
-    (e: React.FormEvent<HTMLDivElement>) => {
-      onTextChange(line.id, (e.target as HTMLDivElement).textContent || "")
-    },
-    [line.id, onTextChange]
+    [line.id, line.text, onEnter, onDelete, onArrowUp, onArrowDown]
   )
 
   const alignClass =
@@ -78,19 +70,15 @@ export function EditorLine({
         : "text-left"
 
   return (
-    <div
+    <textarea
       ref={ref}
-      contentEditable
-      suppressContentEditableWarning
+      value={line.text}
+      onChange={(e) => onTextChange(line.id, e.target.value)}
       onKeyDown={handleKeyDown}
-      onInput={handleInput}
       onFocus={() => onFocus(line.id)}
-      className={`min-h-[1.75rem] py-0.5 outline-none text-foreground leading-7 ${alignClass}`}
-      data-line-id={line.id}
-      role="textbox"
+      rows={1}
+      className={`w-full min-h-[1.75rem] resize-none overflow-hidden bg-transparent py-0.5 outline-none text-foreground leading-7 ${alignClass}`}
       aria-label="Script line"
-    >
-      {line.text}
-    </div>
+    />
   )
 }
