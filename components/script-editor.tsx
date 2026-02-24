@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect } from "react"
 import type { Script, Line } from "@/lib/types"
 import { saveScript, saveDraft, generateId } from "@/lib/storage"
 import { exportToPDF } from "@/lib/pdf-export"
@@ -18,21 +18,18 @@ export function ScriptEditor({ script: initialScript, onBack }: ScriptEditorProp
     initialScript.lines[0]?.id || ""
   )
   const [isSaving, setIsSaving] = useState(false)
-  const editorRef = useRef<HTMLDivElement>(null)
 
-  // Auto-save draft every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      saveDraft(script)
+      void saveDraft(script)
     }, 3000)
     return () => clearInterval(interval)
   }, [script])
 
-  // Save on window close
   useEffect(() => {
     const handleBeforeUnload = () => {
-      saveScript(script)
-      saveDraft(script)
+      void saveScript(script)
+      void saveDraft(script)
     }
     window.addEventListener("beforeunload", handleBeforeUnload)
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
@@ -125,10 +122,14 @@ export function ScriptEditor({ script: initialScript, onBack }: ScriptEditorProp
   }, [])
 
   const handleSave = useCallback(() => {
-    setIsSaving(true)
-    saveScript(script)
-    saveDraft(script)
-    setTimeout(() => setIsSaving(false), 800)
+    const performSave = async () => {
+      setIsSaving(true)
+      await saveScript(script)
+      await saveDraft(script)
+      setTimeout(() => setIsSaving(false), 800)
+    }
+
+    void performSave()
   }, [script])
 
   const handleExportPDF = useCallback(() => {
@@ -136,8 +137,12 @@ export function ScriptEditor({ script: initialScript, onBack }: ScriptEditorProp
   }, [script])
 
   const handleBack = useCallback(() => {
-    saveScript(script)
-    onBack()
+    const persistAndReturn = async () => {
+      await saveScript(script)
+      onBack()
+    }
+
+    void persistAndReturn()
   }, [script, onBack])
 
   return (
@@ -156,10 +161,7 @@ export function ScriptEditor({ script: initialScript, onBack }: ScriptEditorProp
       />
 
       <main className="flex-1 flex justify-center">
-        <div
-          ref={editorRef}
-          className="w-full max-w-[680px] px-6 py-12 md:px-12 md:py-16"
-        >
+        <div className="w-full max-w-[680px] px-6 py-12 md:px-12 md:py-16">
           {script.lines.map((line) => (
             <EditorLine
               key={line.id}
@@ -177,9 +179,7 @@ export function ScriptEditor({ script: initialScript, onBack }: ScriptEditorProp
       </main>
 
       <footer className="border-t border-border px-4 py-2 md:px-8 flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          {isSaving ? "Saving..." : "Auto-saved"}
-        </span>
+        <span>{isSaving ? "Saving..." : "Auto-saved"}</span>
         <span className="md:hidden">
           {wordCount}w / {lineCount}l
         </span>

@@ -14,7 +14,12 @@ export function HomePage() {
   const [scripts, setScripts] = useState<Script[]>([])
 
   useEffect(() => {
-    setScripts(getAllScripts())
+    const loadScripts = async () => {
+      const loadedScripts = await getAllScripts()
+      setScripts(loadedScripts)
+    }
+
+    void loadScripts()
   }, [])
 
   const handleCreateNew = useCallback(() => {
@@ -35,15 +40,23 @@ export function HomePage() {
   }, [])
 
   const handleSelectScript = useCallback((id: string) => {
-    const script = getScriptById(id)
-    if (script) {
-      setView({ type: "editor", script })
+    const loadScript = async () => {
+      const script = await getScriptById(id)
+      if (script) {
+        setView({ type: "editor", script })
+      }
     }
+
+    void loadScript()
   }, [])
 
   const handleBack = useCallback(() => {
-    setScripts(getAllScripts())
-    setView({ type: "home" })
+    const refreshScripts = async () => {
+      setScripts(await getAllScripts())
+      setView({ type: "home" })
+    }
+
+    void refreshScripts()
   }, [])
 
   const handleDeleteScript = useCallback((id: string) => {
@@ -93,7 +106,7 @@ export function HomePage() {
       <footer className="border-t border-border">
         <div className="max-w-2xl mx-auto px-6 py-4 md:px-8">
           <p className="text-xs text-muted-foreground">
-            All scripts are stored locally in your browser.
+            All scripts are stored in the local project data folder.
           </p>
         </div>
       </footer>

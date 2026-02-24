@@ -15,8 +15,12 @@ export function ScriptList({ scripts, onSelect, onDelete }: ScriptListProps) {
   const handleDelete = useCallback(
     (e: React.MouseEvent, id: string) => {
       e.stopPropagation()
-      deleteScript(id)
-      onDelete(id)
+      const removeScript = async () => {
+        await deleteScript(id)
+        onDelete(id)
+      }
+
+      void removeScript()
     },
     [onDelete]
   )

@@ -1,55 +1,57 @@
 import type { Script } from "./types"
 
-const SCRIPTS_KEY = "scriptstudio_scripts"
-const DRAFT_KEY = "scriptstudio_draft"
+async function request<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  })
 
-export function getAllScripts(): Script[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = localStorage.getItem(SCRIPTS_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
+  if (!response.ok) {
+    throw new Error(`Storage request failed: ${response.status}`)
   }
-}
 
-export function getScriptById(id: string): Script | null {
-  const scripts = getAllScripts()
-  return scripts.find((s) => s.id === id) ?? null
-}
-
-export function saveScript(script: Script): void {
-  const scripts = getAllScripts()
-  const index = scripts.findIndex((s) => s.id === script.id)
-  if (index >= 0) {
-    scripts[index] = { ...script, updatedAt: new Date().toISOString() }
-  } else {
-    scripts.push(script)
+  if (response.status === 204) {
+    return undefined as T
   }
-  localStorage.setItem(SCRIPTS_KEY, JSON.stringify(scripts))
+
+  return response.json() as Promise<T>
 }
 
-export function deleteScript(id: string): void {
-  const scripts = getAllScripts().filter((s) => s.id !== id)
-  localStorage.setItem(SCRIPTS_KEY, JSON.stringify(scripts))
+export async function getAllScripts(): Promise<Script[]> {
+  return request<Script[]>("/api/scripts")
 }
 
-export function saveDraft(script: Script): void {
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(script))
+export async function getScriptById(id: string): Promise<Script | null> {
+  return request<Script | null>(`/api/scripts/${id}`)
 }
 
-export function getDraft(): Script | null {
-  if (typeof window === "undefined") return null
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
+export async function saveScript(script: Script): Promise<Script> {
+  return request<Script>("/api/scripts", {
+    method: "POST",
+    body: JSON.stringify(script),
+  })
 }
 
-export function clearDraft(): void {
-  localStorage.removeItem(DRAFT_KEY)
+export async function deleteScript(id: string): Promise<void> {
+  await request<void>(`/api/scripts/${id}`, { method: "DELETE" })
+}
+
+export async function saveDraft(script: Script): Promise<void> {
+  await request<void>("/api/draft", {
+    method: "POST",
+    body: JSON.stringify(script),
+  })
+}
+
+export async function getDraft(): Promise<Script | null> {
+  return request<Script | null>("/api/draft")
+}
+
+export async function clearDraft(): Promise<void> {
+  await request<void>("/api/draft", { method: "DELETE" })
 }
 
 export function generateId(): string {
