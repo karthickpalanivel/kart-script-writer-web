@@ -72,6 +72,7 @@ export function EditorLine({
   return (
     <textarea
       ref={ref}
+      data-line-id={line.id}
       value={line.text}
       onChange={(e) => onTextChange(line.id, e.target.value)}
       onKeyDown={handleKeyDown}

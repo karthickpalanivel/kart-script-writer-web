@@ -13,6 +13,9 @@ interface ScriptEditorProps {
 }
 
 export function ScriptEditor({ script: initialScript, onBack }: ScriptEditorProps) {
+  const GUIDE_BLOCK_SIZE = 30
+  const GUIDE_LINE_HEIGHT_REM = 1.75
+
   const [script, setScript] = useState<Script>(initialScript)
   const [focusedLineId, setFocusedLineId] = useState<string>(
     initialScript.lines[0]?.id || ""
@@ -44,6 +47,24 @@ export function ScriptEditor({ script: initialScript, onBack }: ScriptEditorProp
   }, 0)
 
   const lineCount = script.lines.filter((l) => l.text.trim()).length
+  const totalLinesForGuides = Math.max(script.lines.length, 1)
+  const visibleGuideLineCount =
+    Math.ceil(totalLinesForGuides / GUIDE_BLOCK_SIZE) * GUIDE_BLOCK_SIZE
+
+  const focusScriptZone = useCallback(() => {
+    const fallbackLineId = script.lines[0]?.id
+    const targetLineId = focusedLineId || fallbackLineId
+    if (!targetLineId) return
+
+    setFocusedLineId(targetLineId)
+
+    window.requestAnimationFrame(() => {
+      const editorLine = document.querySelector<HTMLTextAreaElement>(
+        `textarea[data-line-id="${targetLineId}"]`
+      )
+      editorLine?.focus()
+    })
+  }, [focusedLineId, script.lines])
 
   const handleTextChange = useCallback((id: string, text: string) => {
     setScript((prev) => ({
@@ -161,20 +182,44 @@ export function ScriptEditor({ script: initialScript, onBack }: ScriptEditorProp
       />
 
       <main className="flex-1 flex justify-center">
-        <div className="w-full max-w-[680px] px-6 py-12 md:px-12 md:py-16">
-          {script.lines.map((line) => (
-            <EditorLine
-              key={line.id}
-              line={line}
-              isFocused={focusedLineId === line.id}
-              onTextChange={handleTextChange}
-              onEnter={handleEnter}
-              onDelete={handleDeleteLine}
-              onFocus={setFocusedLineId}
-              onArrowUp={handleArrowUp}
-              onArrowDown={handleArrowDown}
-            />
-          ))}
+        <div
+          className="w-full max-w-[680px] px-6 py-12 md:px-12 md:py-16"
+          onMouseDown={(e) => {
+            if ((e.target as HTMLElement).closest("textarea")) return
+            e.preventDefault()
+            focusScriptZone()
+          }}
+        >
+          <div
+            className="relative"
+            style={{ minHeight: `${visibleGuideLineCount * GUIDE_LINE_HEIGHT_REM}rem` }}
+          >
+            <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+              {Array.from({ length: visibleGuideLineCount }).map((_, index) => (
+                <div
+                  key={index}
+                  className="border-b border-gray-400/50"
+                  style={{ height: `${GUIDE_LINE_HEIGHT_REM}rem` }}
+                />
+              ))}
+            </div>
+
+            <div className="relative z-[1]">
+              {script.lines.map((line) => (
+                <EditorLine
+                  key={line.id}
+                  line={line}
+                  isFocused={focusedLineId === line.id}
+                  onTextChange={handleTextChange}
+                  onEnter={handleEnter}
+                  onDelete={handleDeleteLine}
+                  onFocus={setFocusedLineId}
+                  onArrowUp={handleArrowUp}
+                  onArrowDown={handleArrowDown}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </main>
 
